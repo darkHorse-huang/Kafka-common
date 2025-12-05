@@ -1,0 +1,187 @@
+# Spring Boot Kafka Configuration Example
+# This file demonstrates how to configure Kafka in a Spring Boot application
+# using the kafka-common library.
+
+# ============================================
+# Spring Kafka Configuration
+# ============================================
+spring:
+  kafka:
+    # Bootstrap servers (comma-separated list)
+    bootstrap-servers: localhost:9092
+    
+    # Producer Configuration
+    producer:
+      # Key serializer
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      
+      # Value serializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      
+      # Producer properties
+      properties:
+        # Enable idempotence
+        enable.idempotence: true
+        
+        # Compression type
+        compression.type: snappy
+        
+        # Batch size
+        batch.size: 16384
+        
+        # Linger time
+        linger.ms: 1
+        
+        # Buffer memory
+        buffer.memory: 33554432
+        
+        # Acks
+        acks: all
+        
+        # Retries
+        retries: 3
+        
+        # Transactional ID prefix (for transactional producers)
+        transactional.id: kafka-tx-
+        
+        # Interceptor classes (for tracing)
+        interceptor.classes: com.company.kafka.metrics.KafkaTraceInterceptor
+    
+    # Consumer Configuration
+    consumer:
+      # Consumer group ID
+      group-id: ${spring.application.name:kafka-common-group}
+      
+      # Key deserializer
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      
+      # Value deserializer
+      value-deserializer: org.springframework.kafka.support.serializer.ErrorHandlingDeserializer
+      
+      # Auto offset reset
+      auto-offset-reset: earliest
+      
+      # Enable auto commit
+      enable-auto-commit: false
+      
+      # Consumer properties
+      properties:
+        # Error handling deserializer
+        spring.deserializer.value.delegate.class: org.springframework.kafka.support.serializer.JsonDeserializer
+        
+        # Trusted packages for deserialization
+        spring.json.trusted.packages: "*"
+        
+        # Use type information headers
+        spring.json.use.type.headers: false
+        
+        # Default type
+        spring.json.value.default.type: java.lang.Object
+        
+        # Isolation level
+        isolation.level: read_committed
+        
+        # Max poll records
+        max.poll.records: 500
+        
+        # Session timeout
+        session.timeout.ms: 30000
+        
+        # Heartbeat interval
+        heartbeat.interval.ms: 3000
+        
+        # Max poll interval
+        max.poll.interval.ms: 300000
+        
+        # Interceptor classes (for tracing)
+        interceptor.classes: com.company.kafka.metrics.KafkaTraceInterceptor
+    
+    # Listener Configuration
+    listener:
+      # Acknowledgment mode: BATCH, MANUAL, MANUAL_IMMEDIATE
+      ack-mode: MANUAL_IMMEDIATE
+      
+      # Concurrency (number of consumer threads)
+      concurrency: 3
+      
+      # Poll timeout
+      poll-timeout: 3000
+
+# ============================================
+# Kafka Common Library Configuration
+# ============================================
+kafka:
+  # Producer Configuration
+  producer:
+    transaction-id-prefix: kafka-tx-
+    retries: 3
+    acks: all
+    batch-size: 16384
+    linger-ms: 1
+    buffer-memory: 33554432
+    compression-type: snappy
+    enable-idempotence: true
+  
+  # Consumer Configuration
+  consumer:
+    group-id: ${spring.application.name:kafka-common-group}
+    auto-offset-reset: earliest
+    enable-auto-commit: false
+    max-poll-records: 500
+    concurrency: 3
+    session-timeout-ms: 30000
+    heartbeat-interval-ms: 3000
+  
+  # Monitoring Configuration
+  monitoring:
+    enabled: true
+    collection-interval: 60
+    detailed-metrics: true
+    tags:
+      application: ${spring.application.name:unknown}
+      environment: ${spring.profiles.active:default}
+  
+  # Trace Configuration
+  trace:
+    enabled: true
+    trace-id-header: traceId
+    span-id-header: spanId
+    propagation-enabled: true
+    sampling-rate: 1.0
+  
+  # Retry Configuration
+  retry:
+    max-attempts: 3
+    initial-delay-ms: 1000
+    multiplier: 2.0
+    max-delay-ms: 10000
+  
+  # Dead Letter Queue Configuration
+  dlt:
+    enabled: true
+    topic-suffix: -dlt
+    retry-topic-suffix: -retry
+    max-retry-attempts: 3
+
+# ============================================
+# Micrometer Configuration (for metrics)
+# ============================================
+management:
+  metrics:
+    export:
+      # Enable metrics export (example: prometheus)
+      prometheus:
+        enabled: true
+    tags:
+      application: ${spring.application.name:unknown}
+      environment: ${spring.profiles.active:default}
+
+# ============================================
+# Logging Configuration (for trace correlation)
+# ============================================
+logging:
+  pattern:
+    # Include trace ID in log pattern
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level [%X{traceId:-}] [%X{spanId:-}] %logger{36} - %msg%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level [%X{traceId:-}] [%X{spanId:-}] %logger{36} - %msg%n"
+

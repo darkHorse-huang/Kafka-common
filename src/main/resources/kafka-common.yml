@@ -1,0 +1,137 @@
+# Kafka Common Default Configuration
+# This file contains default configurations for Kafka producers, consumers, monitoring, and tracing.
+
+# ============================================
+# Producer Default Configuration
+# ============================================
+kafka:
+  producer:
+    # Transaction ID prefix for transactional producers
+    transaction-id-prefix: kafka-tx-
+    
+    # Retry configuration
+    retries: 3
+    
+    # Acknowledgment mode: all, 1, 0
+    # all: wait for all in-sync replicas to acknowledge
+    # 1: wait for leader to acknowledge
+    # 0: no acknowledgment
+    acks: all
+    
+    # Batch configuration for better throughput
+    batch-size: 16384  # 16KB
+    linger-ms: 1       # Wait time before sending batch
+    
+    # Buffer memory for batching
+    buffer-memory: 33554432  # 32MB
+    
+    # Compression type: none, gzip, snappy, lz4, zstd
+    compression-type: snappy
+    
+    # Idempotence: ensure exactly-once semantics
+    enable-idempotence: true
+
+# ============================================
+# Consumer Default Configuration
+# ============================================
+kafka:
+  consumer:
+    # Consumer group ID (default, can be overridden per consumer)
+    group-id: kafka-common-group
+    
+    # Auto offset reset: earliest, latest, none
+    auto-offset-reset: earliest
+    
+    # Enable/disable auto commit
+    enable-auto-commit: false
+    
+    # Maximum number of records to poll in one batch
+    max-poll-records: 500
+    
+    # Number of concurrent consumer threads
+    concurrency: 3
+    
+    # Session timeout in milliseconds
+    session-timeout-ms: 30000
+    
+    # Heartbeat interval in milliseconds
+    heartbeat-interval-ms: 3000
+    
+    # Max poll interval in milliseconds (time between polls)
+    max-poll-interval-ms: 300000  # 5 minutes
+    
+    # Fetch configuration
+    fetch-min-bytes: 1
+    fetch-max-wait-ms: 500
+
+# ============================================
+# Monitoring Configuration
+# ============================================
+kafka:
+  monitoring:
+    # Enable/disable monitoring
+    enabled: false
+    
+    # Metrics collection interval in seconds
+    collection-interval: 60
+    
+    # Enable detailed metrics
+    detailed-metrics: false
+    
+    # Metrics tags
+    tags:
+      application: ${spring.application.name:unknown}
+      environment: ${spring.profiles.active:default}
+
+# ============================================
+# Trace Configuration
+# ============================================
+kafka:
+  trace:
+    # Enable/disable distributed tracing
+    enabled: false
+    
+    # Trace header names
+    trace-id-header: traceId
+    span-id-header: spanId
+    
+    # Enable trace propagation
+    propagation-enabled: true
+    
+    # Trace sampling rate (0.0 to 1.0)
+    sampling-rate: 1.0
+
+# ============================================
+# Retry Configuration
+# ============================================
+kafka:
+  retry:
+    # Maximum retry attempts
+    max-attempts: 3
+    
+    # Initial delay in milliseconds
+    initial-delay-ms: 1000
+    
+    # Backoff multiplier
+    multiplier: 2.0
+    
+    # Maximum delay in milliseconds
+    max-delay-ms: 10000
+
+# ============================================
+# Dead Letter Queue Configuration
+# ============================================
+kafka:
+  dlt:
+    # Enable DLT (Dead Letter Topic)
+    enabled: true
+    
+    # DLT topic suffix
+    topic-suffix: -dlt
+    
+    # Retry topic suffix
+    retry-topic-suffix: -retry
+    
+    # Maximum retry attempts before sending to DLT
+    max-retry-attempts: 3
+

@@ -1,0 +1,126 @@
+# Spring Boot Application Configuration Example
+# This file demonstrates how to configure the application to use kafka-common library
+
+spring:
+  application:
+    name: kafka-example-app
+
+  # Kafka Configuration
+  kafka:
+    bootstrap-servers: localhost:9092
+
+    # Producer Configuration
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      properties:
+        enable.idempotence: true
+        compression.type: snappy
+        batch.size: 16384
+        linger.ms: 1
+        buffer.memory: 33554432
+        acks: all
+        retries: 3
+        transactional.id: kafka-tx-
+        # Enable trace interceptor
+        interceptor.classes: com.company.kafka.metrics.KafkaTraceInterceptor
+
+    # Consumer Configuration
+    consumer:
+      group-id: ${spring.application.name}
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.ErrorHandlingDeserializer
+      auto-offset-reset: earliest
+      enable-auto-commit: false
+      properties:
+        spring.deserializer.value.delegate.class: org.springframework.kafka.support.serializer.JsonDeserializer
+        spring.json.trusted.packages: "*"
+        spring.json.use.type.headers: false
+        spring.json.value.default.type: java.lang.Object
+        isolation.level: read_committed
+        max.poll.records: 500
+        session.timeout.ms: 30000
+        heartbeat.interval.ms: 3000
+        max.poll.interval.ms: 300000
+        # Enable trace interceptor
+        interceptor.classes: com.company.kafka.metrics.KafkaTraceInterceptor
+
+    # Listener Configuration
+    listener:
+      ack-mode: MANUAL_IMMEDIATE
+      concurrency: 3
+      poll-timeout: 3000
+
+# Kafka Common Library Configuration
+kafka:
+  # Producer Configuration
+  producer:
+    transaction-id-prefix: kafka-tx-
+    retries: 3
+    acks: all
+    batch-size: 16384
+    linger-ms: 1
+    buffer-memory: 33554432
+    compression-type: snappy
+    enable-idempotence: true
+
+  # Consumer Configuration
+  consumer:
+    group-id: ${spring.application.name}
+    auto-offset-reset: earliest
+    enable-auto-commit: false
+    max-poll-records: 500
+    concurrency: 3
+    session-timeout-ms: 30000
+    heartbeat-interval-ms: 3000
+
+  # Monitoring Configuration
+  monitoring:
+    enabled: true
+    collection-interval: 60
+    detailed-metrics: true
+    tags:
+      application: ${spring.application.name}
+      environment: ${spring.profiles.active:default}
+
+  # Trace Configuration
+  trace:
+    enabled: true
+    trace-id-header: traceId
+    span-id-header: spanId
+    propagation-enabled: true
+    sampling-rate: 1.0
+
+  # Retry Configuration
+  retry:
+    max-attempts: 3
+    initial-delay-ms: 1000
+    multiplier: 2.0
+    max-delay-ms: 10000
+
+  # Dead Letter Queue Configuration
+  dlt:
+    enabled: true
+    topic-suffix: -dlt
+    retry-topic-suffix: -retry
+    max-retry-attempts: 3
+
+# Micrometer Configuration (for metrics)
+management:
+  metrics:
+    export:
+      prometheus:
+        enabled: true
+    tags:
+      application: ${spring.application.name}
+      environment: ${spring.profiles.active:default}
+
+# Logging Configuration (for trace correlation)
+logging:
+  level:
+    root: INFO
+    com.company.kafka: DEBUG
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level [%X{traceId:-}] [%X{spanId:-}] %logger{36} - %msg%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level [%X{traceId:-}] [%X{spanId:-}] %logger{36} - %msg%n"
+
