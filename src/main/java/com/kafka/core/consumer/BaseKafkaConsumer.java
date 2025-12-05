@@ -424,8 +424,9 @@ public abstract class BaseKafkaConsumer<T> implements AcknowledgingMessageListen
                 retryTopic, msgId, newRetryCount, maxRetryCount);
 
         try {
+            Map<String, String> headers = extractHeaders(record);
             Message<Object> retryMessage = MessageBuilder.withPayload(record.value())
-                    .copyHeaders(record.headers())
+                    .copyHeaders(headers)
                     .setHeader(KafkaHeaders.RETRY_COUNT, String.valueOf(newRetryCount))
                     .setHeader(org.springframework.kafka.support.KafkaHeaders.TOPIC, retryTopic)
                     .build();
@@ -480,8 +481,9 @@ public abstract class BaseKafkaConsumer<T> implements AcknowledgingMessageListen
             dltPayload.put("msgId", msgId);
             dltPayload.put("bizKey", getHeader(record, KafkaHeaders.BIZ_KEY));
 
+            Map<String, String> headers = extractHeaders(record);
             Message<Map<String, Object>> dltMessage = MessageBuilder.withPayload(dltPayload)
-                    .copyHeaders(record.headers())
+                    .copyHeaders(headers)
                     .setHeader(org.springframework.kafka.support.KafkaHeaders.TOPIC, dltTopic)
                     .setHeader("errorCode", errorCode)
                     .build();

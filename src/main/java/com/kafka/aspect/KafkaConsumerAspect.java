@@ -13,10 +13,10 @@ import org.springframework.context.ApplicationContext;
 import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
 import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
-import org.springframework.kafka.core.KafkaTemplate;
+import org.springframework.kafka.listener.AcknowledgingMessageListener;
+import org.springframework.kafka.listener.BatchAcknowledgingMessageListener;
 import org.springframework.kafka.listener.ConcurrentMessageListenerContainer;
 import org.springframework.kafka.listener.ContainerProperties;
-import org.springframework.kafka.listener.MessageListener;
 import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.stereotype.Component;
 
@@ -40,7 +40,6 @@ public class KafkaConsumerAspect {
 
     private final ApplicationContext applicationContext;
     private final ConsumerFactory<String, Object> consumerFactory;
-    private final KafkaTemplate<String, Object> kafkaTemplate;
 
     // Store container references for management
     private final Map<String, ConcurrentMessageListenerContainer<String, Object>> containers = new ConcurrentHashMap<>();
@@ -85,7 +84,7 @@ public class KafkaConsumerAspect {
      * @return the method result
      * @throws Throwable if an error occurs
      */
-    @Around("@annotation(com.company.kafka.annotation.KafkaConsumer)")
+    @Around("@annotation(com.kafka.annotation.KafkaConsumer)")
     public Object aroundKafkaConsumer(ProceedingJoinPoint joinPoint) throws Throwable {
         MethodSignature signature = (MethodSignature) joinPoint.getSignature();
         Method method = signature.getMethod();
@@ -127,17 +126,24 @@ public class KafkaConsumerAspect {
             // Create container factory with annotation parameters
             ConcurrentKafkaListenerContainerFactory<String, Object> factory = createContainerFactory(annotation);
 
-            // Create message listener
-            MessageListener<String, Object> messageListener = createMessageListener(bean, method, annotation);
-
             // Create container properties
             ContainerProperties containerProperties = new ContainerProperties(annotation.topic());
-            containerProperties.setMessageListener(messageListener);
             containerProperties.setAckMode(parseAckMode(annotation.ackMode()));
             
             // Set group ID if specified
             if (!annotation.groupId().isEmpty()) {
                 containerProperties.setGroupId(annotation.groupId());
+            }
+
+            // Create message listener based on batch mode
+            if (annotation.batch()) {
+                // Batch listener
+                BatchAcknowledgingMessageListener<String, Object> batchListener = createBatchMessageListener(bean, method);
+                containerProperties.setMessageListener(batchListener);
+            } else {
+                // Single message listener
+                AcknowledgingMessageListener<String, Object> singleListener = createSingleMessageListener(bean, method);
+                containerProperties.setMessageListener(singleListener);
             }
 
             // Create container
@@ -179,7 +185,6 @@ public class KafkaConsumerAspect {
         if (!annotation.groupId().isEmpty()) {
             // Create new consumer factory with custom group ID
             if (consumerFactory instanceof DefaultKafkaConsumerFactory) {
-                @SuppressWarnings("unchecked")
                 DefaultKafkaConsumerFactory<String, Object> defaultFactory = 
                         (DefaultKafkaConsumerFactory<String, Object>) consumerFactory;
                 Map<String, Object> configProps = new HashMap<>(defaultFactory.getConfigurationProperties());
@@ -203,61 +208,69 @@ public class KafkaConsumerAspect {
     }
 
     /**
-     * Create message listener that invokes the annotated method.
+     * Create batch message listener that invokes the annotated method.
      *
-     * @param bean       the bean instance
-     * @param method     the method to invoke
-     * @param annotation the @KafkaConsumer annotation
-     * @return message listener
+     * @param bean   the bean instance
+     * @param method the method to invoke
+     * @return batch message listener
      */
-    private MessageListener<String, Object> createMessageListener(
-            Object bean, Method method, KafkaConsumer annotation) {
+    private BatchAcknowledgingMessageListener<String, Object> createBatchMessageListener(
+            Object bean, Method method) {
         
         method.setAccessible(true);
         
-        if (annotation.batch()) {
-            // Batch listener
-            return new org.springframework.kafka.listener.BatchAcknowledgingMessageListener<String, Object>() {
-                @Override
-                public void onMessage(java.util.List<ConsumerRecord<String, Object>> records, Acknowledgment ack) {
-                    try {
-                        // Invoke method with records and acknowledgment
-                        if (method.getParameterCount() == 2) {
-                            method.invoke(bean, records, ack);
-                        } else if (method.getParameterCount() == 1) {
-                            method.invoke(bean, records);
-                        } else {
-                            method.invoke(bean);
-                        }
-                    } catch (Exception e) {
-                        log.error("Error invoking batch consumer method: {}.{}", 
-                                bean.getClass().getName(), method.getName(), e);
-                        throw new RuntimeException("Error processing batch messages", e);
+        return new BatchAcknowledgingMessageListener<String, Object>() {
+            @Override
+            public void onMessage(java.util.List<ConsumerRecord<String, Object>> records, Acknowledgment ack) {
+                try {
+                    // Invoke method with records and acknowledgment
+                    if (method.getParameterCount() == 2) {
+                        method.invoke(bean, records, ack);
+                    } else if (method.getParameterCount() == 1) {
+                        method.invoke(bean, records);
+                    } else {
+                        method.invoke(bean);
                     }
+                } catch (Exception e) {
+                    log.error("Error invoking batch consumer method: {}.{}", 
+                            bean.getClass().getName(), method.getName(), e);
+                    throw new RuntimeException("Error processing batch messages", e);
                 }
-            };
-        } else {
-            // Single message listener
-            return new org.springframework.kafka.listener.AcknowledgingMessageListener<String, Object>() {
-                @Override
-                public void onMessage(ConsumerRecord<String, Object> record, Acknowledgment ack) {
-                    try {
-                        // Invoke method with record and acknowledgment
-                        if (method.getParameterCount() == 2) {
-                            method.invoke(bean, record, ack);
-                        } else if (method.getParameterCount() == 1) {
-                            method.invoke(bean, record);
-                        } else {
-                            method.invoke(bean);
-                        }
-                    } catch (Exception e) {
-                        log.error("Error invoking consumer method: {}.{}", 
-                                bean.getClass().getName(), method.getName(), e);
-                        throw new RuntimeException("Error processing message", e);
+            }
+        };
+    }
+
+    /**
+     * Create single message listener that invokes the annotated method.
+     *
+     * @param bean   the bean instance
+     * @param method the method to invoke
+     * @return single message listener
+     */
+    private AcknowledgingMessageListener<String, Object> createSingleMessageListener(
+            Object bean, Method method) {
+        
+        method.setAccessible(true);
+        
+        return new AcknowledgingMessageListener<String, Object>() {
+            @Override
+            public void onMessage(ConsumerRecord<String, Object> record, Acknowledgment ack) {
+                try {
+                    // Invoke method with record and acknowledgment
+                    if (method.getParameterCount() == 2) {
+                        method.invoke(bean, record, ack);
+                    } else if (method.getParameterCount() == 1) {
+                        method.invoke(bean, record);
+                    } else {
+                        method.invoke(bean);
                     }
+                } catch (Exception e) {
+                    log.error("Error invoking consumer method: {}.{}", 
+                            bean.getClass().getName(), method.getName(), e);
+                    throw new RuntimeException("Error processing message", e);
                 }
-            };
-        }
+            }
+        };
     }
 
     /**

@@ -1,14 +1,13 @@
 package com.kafka.config;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.kafka.core.producer.EnhancedKafkaTemplate;
 import com.kafka.metrics.KafkaMetrics;
 import com.kafka.metrics.KafkaTraceInterceptor;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.boot.autoconfigure.AutoConfigureAfter;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
-import org.springframework.boot.autoconfigure.kafka.KafkaAutoConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.kafka.core.KafkaTemplate;

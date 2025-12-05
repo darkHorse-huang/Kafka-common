@@ -315,8 +315,12 @@ public class UsageExamples {
 
             try {
                 retryTemplate.execute(() -> {
-                    enhancedKafkaTemplate.send("order-events", order, order.getOrderId(), null)
-                            .get(); // Wait for completion
+                    try {
+                        enhancedKafkaTemplate.send("order-events", order, order.getOrderId(), null)
+                                .get(); // Wait for completion
+                    } catch (InterruptedException | java.util.concurrent.ExecutionException e) {
+                        throw new RuntimeException("Failed to send message", e);
+                    }
                     return null;
                 });
             } catch (Exception e) {
